@@ -12,21 +12,27 @@ static char t1ovr = 0;
 static char t2cnt = 0;
 static char t2ovr = 0;
 
+#define SAM 100
+static const char sine[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 119, 111, 103, 95, 88, 80, 73, 66, 59, 52, 46, 40, 34, 29, 24, 19, 15, 12, 8, 6, 4, 2, 1, 0, 0, 0, 1, 2, 4, 6, 8, 12, 15, 19, 24, 29, 34, 40, 46, 52, 59, 66, 73, 80, 88, 95, 103, 111, 119};
+static char sIn = 0;
 
 void setup() {
 
-  DDRD =  0xE0;
-  PORTD = 0x00;
-
-  f1500hz();
-  f1750hz();
-  f3000hz();
+  //DDRD =  0xE0;
+  //PORTD = 0x00;
+  DDRD = 0xFF;
+  PORTD = 127;
+  f200000hz();
+  //f1500hz();
+  //f1750hz();
+  //f3000hz();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
 }
+
 
 ISR(TIMER0_COMPA_vect){ //using pin 5 of PORTD
     if (t0ovr == t0cnt){
@@ -55,6 +61,12 @@ ISR(TIMER2_COMPA_vect){ //using pin 7 of PORTD
         t2cnt += 1;}
 }
 
+void sineWriter(){
+  PORTD = sine[sIn];
+  sIn++;
+  if (sIn==SAM) sIn = 0;
+}
+
 void t0routine() {
 PORTD = ((~PORTD & 0x20) | (0xDF & PORTD));
 }
@@ -64,7 +76,8 @@ PORTD = ((~PORTD & 0x40) | (0xBF & PORTD));
 }
 
 void t2routine() {
-PORTD = ((~PORTD & 0x80) | (0x7F & PORTD));
+//PORTD = ((~PORTD & 0x80) | (0x7F & PORTD));
+sineWriter();
 }
 
 void setTimer0(char CTC, char CS)
@@ -114,6 +127,8 @@ void f100hz(){ t0ovr = 49; setTimer0(155,0x05);}
 void f1500hz(){setTimer0(165,0x03);}
 void f1750hz(){setTimer1(9141,0x01);}
 void f3000hz(){setTimer2(165,0x03);}
+void f10000hz(){setTimer2(24,0x04);}
+void f200000hz(){setTimer2(9,0x02);}
 
 //Notes:
 

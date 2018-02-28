@@ -3,7 +3,7 @@ import math
 ##global samples, bits_out, DAC_r, values, twoPirad, step, typedir, out
 
 def main():
-    samples = 25
+    samples = 100
     bits_out = 8
     DAC_r = 8
     DAC_max = (2**DAC_r) - 1

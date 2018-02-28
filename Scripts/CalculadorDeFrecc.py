@@ -25,7 +25,11 @@ def main():
         for i,pmax in enumerate(PrMax):
             for j,p in enumerate(Prs[i]):
                 CMR = ((Aclk) / (p * DIF)) - 1
-                RF = (float(Aclk))/(float(p) * float(CMR+1))
+                try:
+                    RF = (float(Aclk))/(float(p) * float(CMR+1))
+                except:
+                    print "Error cannot be calculated"
+                    RF = 0.0
                 if CMR <= pmax and CMR >= 0:
                     print "For Pr" + str(i) + "= " + str(p) + " =>" + str(CMR) + "\t ERR=" + str(RF-float(DIF))
                     out += "void f" + str(DIF) +"hz(){setTimer" + str(i) + "("+ str(CMR) +","+ str("0x0%d"%(j+1)) +");}\n"
