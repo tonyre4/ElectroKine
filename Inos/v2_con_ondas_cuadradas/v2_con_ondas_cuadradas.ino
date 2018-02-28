@@ -22,6 +22,7 @@ static bool act = true;
 
 #define SAM 100
 static const char sine[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 119, 111, 103, 95, 88, 80, 73, 66, 59, 52, 46, 40, 34, 29, 24, 19, 15, 12, 8, 6, 4, 2, 1, 0, 0, 0, 1, 2, 4, 6, 8, 12, 15, 19, 24, 29, 34, 40, 46, 52, 59, 66, 73, 80, 88, 95, 103, 111, 119};
+static const char diad[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135};
 static char cnt = 0;
 
 void setup() {
@@ -30,7 +31,7 @@ void setup() {
   //PORTD = 0x00;
   DDRD = 0xFF;
   PORTD = 127;
-  f5500hz();
+  f20000hzT2();
 }
 
 void loop() {
@@ -66,15 +67,18 @@ ISR(TIMER2_COMPA_vect){ //using pin 7 of PORTD
         t2cnt += 1;}
 }
 
-void sineWriter(){
-  PORTD = sine[cnt];
+static bool isGALV = false;
+
+void DIADGALVWriter(){
+  if(isGALV) PORTD = sine[cnt];
+  else PORTD = diad[cnt];
   cnt++;
   if (cnt==SAM) cnt = 0;
 }
 
 void t0routine() {
 //PORTD = ((~PORTD & 0x20) | (0xDF & PORTD));
-RUSAWrite();
+TRENRUSAWrite();
 }
 
 void t1routine() {
@@ -84,8 +88,8 @@ TENSWrite();
 
 void t2routine() {
 //PORTD = ((~PORTD & 0x80) | (0x7F & PORTD));
-//sineWriter();
-MODUWrite();
+DIADGALVWriter();
+//MODUWrite();
 }
 
 static const char MODU = 55;
@@ -120,10 +124,13 @@ void TENSWrite()
   if (cnt == 50) {cnt = 0; timing();}
 }
 
-static const char RUSA = 35;
+static const char TRENRUSA[2] = {15,35};
+static const char tT [6] = {1,2,3,4,5,6};
+static char tTmode = 0;
+static bool isRUSA = true;
 
 //SECUENCIA DE LA RUSA
-void RUSAWrite() //a una frecc de 3500Hz
+void TRENRUSAWrite() //a una frecc de 3500Hz
 {
 if (act) PORTD = sine[cnt];
 else PORTD = 0x7C;
@@ -132,8 +139,8 @@ if (cnt == SAM)
 {
     cnt = 0;
     cntF++;
-    if (cntF == RUSA) {cntF =0;  t++; timing();}
-    if (t==11) {act = !act; t = 0;}
+    if (cntF == TRENRUSA[isRUSA]) {cntF = 0;  t++; timing();}
+    if ((isRUSA && t == 11) || (!isRUSA && t == tT[tTmode]) ) {act = !act; t = 0;}
 }
 }
 
@@ -199,6 +206,7 @@ void f20000hz(){setTimer2(11,0x04);}
 void f50hz(){setTimer1(39999,0x02);}
 void f3500hz(){setTimer0(70,0x03);}
 void f5500hz(){setTimer2(89,0x03);}
+void f20000hzT2(){setTimer2(11,0x04);}
 
 //Notes:
 
