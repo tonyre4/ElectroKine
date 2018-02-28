@@ -12,9 +12,17 @@ static char t1ovr = 0;
 static char t2cnt = 0;
 static char t2ovr = 0;
 
+static unsigned char stot = 0;
+static unsigned char mtot = 0;
+
+static char t = 0;
+static char cntF = 0;
+static bool act = true;
+
+
 #define SAM 100
 static const char sine[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 119, 111, 103, 95, 88, 80, 73, 66, 59, 52, 46, 40, 34, 29, 24, 19, 15, 12, 8, 6, 4, 2, 1, 0, 0, 0, 1, 2, 4, 6, 8, 12, 15, 19, 24, 29, 34, 40, 46, 52, 59, 66, 73, 80, 88, 95, 103, 111, 119};
-static char sIn = 0;
+static char cnt = 0;
 
 void setup() {
 
@@ -22,10 +30,7 @@ void setup() {
   //PORTD = 0x00;
   DDRD = 0xFF;
   PORTD = 127;
-  f200000hz();
-  //f1500hz();
-  //f1750hz();
-  //f3000hz();
+  f5500hz();
 }
 
 void loop() {
@@ -62,23 +67,84 @@ ISR(TIMER2_COMPA_vect){ //using pin 7 of PORTD
 }
 
 void sineWriter(){
-  PORTD = sine[sIn];
-  sIn++;
-  if (sIn==SAM) sIn = 0;
+  PORTD = sine[cnt];
+  cnt++;
+  if (cnt==SAM) cnt = 0;
 }
 
 void t0routine() {
-PORTD = ((~PORTD & 0x20) | (0xDF & PORTD));
+//PORTD = ((~PORTD & 0x20) | (0xDF & PORTD));
+RUSAWrite();
 }
 
 void t1routine() {
-PORTD = ((~PORTD & 0x40) | (0xBF & PORTD));
+//PORTD = ((~PORTD & 0x40) | (0xBF & PORTD));
+TENSWrite();
 }
 
 void t2routine() {
 //PORTD = ((~PORTD & 0x80) | (0x7F & PORTD));
-sineWriter();
+//sineWriter();
+MODUWrite();
 }
+
+static const char MODU = 55;
+static char MODUtcnt = 0;
+static const char MODUtarray[8] = {4, 6, 4, 5, 9, 3, 14, 1};  
+
+void MODUWrite() //a una frecc de 5500Hz
+{
+  if (act) PORTD = sine[cnt];
+  else PORTD = 0x7C;
+  cnt++;
+
+if (cnt == SAM)
+{
+    cnt = 0;
+    cntF++;
+    if (cntF == 27) {t++;}
+    if (cntF == MODU) {cntF = 0;  t++; timing();}
+    if (t == MODUtarray[MODUtcnt]) {act = !act; t = 0; MODUtcnt++;}
+    if (MODUtcnt == 8) MODUtcnt = 0;
+}
+}
+
+
+void TENSWrite()
+{ //un clk en base 50 osease 50Hz para una tens de 1 Hz
+  if (cnt == 0) PORTD = 0xFF;
+  else
+  if (cnt ==23) PORTD = 0x00;
+  else PORTD = 0x7C;
+  cnt++;
+  if (cnt == 50) {cnt = 0; timing();}
+}
+
+static const char RUSA = 35;
+
+//SECUENCIA DE LA RUSA
+void RUSAWrite() //a una frecc de 3500Hz
+{
+if (act) PORTD = sine[cnt];
+else PORTD = 0x7C;
+cnt++;
+if (cnt == SAM)
+{
+    cnt = 0;
+    cntF++;
+    if (cntF == RUSA) {cntF =0;  t++; timing();}
+    if (t==11) {act = !act; t = 0;}
+}
+}
+
+
+void timing()
+{
+stot++;
+if (stot == 60)
+{mtot++; stot=0;}
+}
+
 
 void setTimer0(char CTC, char CS)
 {
@@ -128,7 +194,11 @@ void f1500hz(){setTimer0(165,0x03);}
 void f1750hz(){setTimer1(9141,0x01);}
 void f3000hz(){setTimer2(165,0x03);}
 void f10000hz(){setTimer2(24,0x04);}
-void f200000hz(){setTimer2(9,0x02);}
+void f20000hz(){setTimer2(11,0x04);}
+
+void f50hz(){setTimer1(39999,0x02);}
+void f3500hz(){setTimer0(70,0x03);}
+void f5500hz(){setTimer2(89,0x03);}
 
 //Notes:
 
