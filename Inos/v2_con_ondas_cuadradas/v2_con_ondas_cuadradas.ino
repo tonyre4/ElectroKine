@@ -1,37 +1,23 @@
 
-//Para una onda cuadrada de 1 MHz un prescaler de 2MHz
-//para hacer el switcheo
-
-//CLK 16MHz
-//PRESCALER 1/8 -> 2MHz
-
-static char t0cnt = 0;
-static char t0ovr = 0;
-static char t1cnt = 0;
-static char t1ovr = 0;
-static char t2cnt = 0;
-static char t2ovr = 0;
-
 static unsigned char stot = 0;
 static unsigned char mtot = 0;
 
-static char t = 0;
-static char cntF = 0;
+static char unsigned t = 0;
+static char unsigned cntF = 0;
 static bool act = true;
 
-
-#define SAM 100
-static const char sine[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 119, 111, 103, 95, 88, 80, 73, 66, 59, 52, 46, 40, 34, 29, 24, 19, 15, 12, 8, 6, 4, 2, 1, 0, 0, 0, 1, 2, 4, 6, 8, 12, 15, 19, 24, 29, 34, 40, 46, 52, 59, 66, 73, 80, 88, 95, 103, 111, 119};
-static const char diad[SAM] = {127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135, 127, 135, 143, 151, 159, 166, 174, 181, 188, 195, 202, 208, 214, 220, 225, 230, 235, 239, 242, 246, 248, 250, 252, 253, 254, 255, 254, 253, 252, 250, 248, 246, 242, 239, 235, 230, 225, 220, 214, 208, 202, 195, 188, 181, 174, 166, 159, 151, 143, 135};
-static char cnt = 0;
+#define MID 0X80
+#define SAM 50
+static const unsigned char sine[SAM] = {0x00, 0x07, 0x0f, 0x17, 0x1f, 0x27, 0x2e, 0x36, 0x3d, 0x44, 0x4a, 0x50, 0x56, 0x5c, 0x61, 0x66, 0x6b, 0x6f, 0x72, 0x76, 0x78, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, 0x7e, 0x7d, 0x7c, 0x7b, 0x78, 0x76, 0x72, 0x6f, 0x6b, 0x66, 0x61, 0x5c, 0x56, 0x50, 0x4a, 0x44, 0x3d, 0x36, 0x2e, 0x27, 0x1f, 0x17, 0x0f, 0x07};
+static char unsigned cnt = 0;
 
 void setup() {
 
   //DDRD =  0xE0;
   //PORTD = 0x00;
-  DDRD = 0xFF;
-  PORTD = 127;
-  f20000hzT2();
+  DDRD  = 0xFF;
+  PORTD = 0x80;
+  f10000hzT2();
 }
 
 void loop() {
@@ -41,40 +27,17 @@ void loop() {
 
 
 ISR(TIMER0_COMPA_vect){ //using pin 5 of PORTD
-    if (t0ovr == t0cnt){
         t0routine();
-        t0cnt = 0x00;
-    }
-    else{
-        t0cnt += 1;}
 }
 
-ISR(TIMER1_COMPA_vect){ //using pin 6 of PORTD
-    if (t1ovr == t1cnt){
+ISR(TIMER1_COMPA_vect){
         t1routine();
-        t1cnt = 0x00;
-    }
-    else{
-        t1cnt += 1;}
 }
 
-ISR(TIMER2_COMPA_vect){ //using pin 7 of PORTD
-    if (t2ovr == t2cnt){
+ISR(TIMER2_COMPA_vect){
         t2routine();
-        t2cnt = 0x00;
-    }
-    else {
-        t2cnt += 1;}
 }
 
-static bool isGALV = false;
-
-void DIADGALVWriter(){
-  if(isGALV) PORTD = sine[cnt];
-  else PORTD = diad[cnt];
-  cnt++;
-  if (cnt==SAM) cnt = 0;
-}
 
 void t0routine() {
 //PORTD = ((~PORTD & 0x20) | (0xDF & PORTD));
@@ -88,70 +51,143 @@ TENSWrite();
 
 void t2routine() {
 //PORTD = ((~PORTD & 0x80) | (0x7F & PORTD));
-DIADGALVWriter();
+//DIADGALVWriter();
 //MODUWrite();
+EXPOWrite();
 }
 
-static const char MODU = 55;
-static char MODUtcnt = 0;
-static const char MODUtarray[8] = {4, 6, 4, 5, 9, 3, 14, 1};  
+static bool SAMdone = false;
+static const unsigned char tT [6] = {1,2,3,4,5,6};
+static unsigned char tTmode = 0;
+
+/////////////////////////////////////
+/////////////EXPO////////////////////
+/////////////////////////////////////
+static const unsigned char EXPO = 100;
+static unsigned char Erel = 10;
+//static unsigned char rels[10] = {10, };
+static bool isEXPO = true;
+
+void EXPOWrite(){ //a una frecc de 10000Hz
+    if (cntF<=20)
+        Erel = 21 - cntF;
+    if (cntF>=80)
+        Erel = 21 - (EXPO-cntF);
+
+    DIADGALVWriter();
+    
+    if (SAMdone)
+    {
+    SAMdone = false;
+    cntF++;
+    if (cntF == EXPO) {cntF = 0;  t++; timing();}
+    if (t == tT[tTmode]) {act = !act; t = 0;}
+    }
+}
+
+//###################################
+//###################################
+
+//////////////////////////////
+/////////GALV y DIAD//////////
+//////////////////////////////
+static bool isGALV = true;
+static bool sinePol = true;
+static unsigned char val = 0;
+
+void DIADGALVWriter(){
+  if (isEXPO)
+    val = sine[cnt]/Erel;
+  else
+    val = sine[cnt];
+  
+  if (act)
+  if ((sinePol || !isGALV)) PORTD = MID + val;
+  else PORTD = MID - val;
+  else PORTD = MID;
+  cnt++;
+  if(cnt==SAM)
+  {
+    if(!sinePol) {timing(); SAMdone = true;}
+    cnt = 0;
+    sinePol = !sinePol;
+  }
+}
+//########################################
+//########################################
+
+
+/////////////////////////////////////
+/////////////MODU////////////////////
+/////////////////////////////////////
+static const unsigned char MODU = 55;
+static unsigned char MODUtcnt = 0;
+static const unsigned char MODUtarray[8] = {4, 6, 4, 5, 9, 3, 14, 1};  
 
 void MODUWrite() //a una frecc de 5500Hz
 {
-  if (act) PORTD = sine[cnt];
-  else PORTD = 0x7C;
-  cnt++;
-
-if (cnt == SAM)
-{
-    cnt = 0;
-    cntF++;
-    if (cntF == 27) {t++;}
-    if (cntF == MODU) {cntF = 0;  t++; timing();}
-    if (t == MODUtarray[MODUtcnt]) {act = !act; t = 0; MODUtcnt++;}
-    if (MODUtcnt == 8) MODUtcnt = 0;
+  DIADGALVWriter();
+  if (SAMdone)
+  {   
+      SAMdone = false;
+      cntF++;
+      if (cntF == 27) {t++;}
+      if (cntF == MODU) {cntF = 0;  t++; timing();}
+      if (t == MODUtarray[MODUtcnt]) {act = !act; t = 0; MODUtcnt++;}
+      if (MODUtcnt == 8) MODUtcnt = 0;
+  }
 }
-}
+//###################################
+//###################################
 
+/////////////////////////////////////
+/////////////TENS////////////////////
+/////////////////////////////////////
 
 void TENSWrite()
 { //un clk en base 50 osease 50Hz para una tens de 1 Hz
   if (cnt == 0) PORTD = 0xFF;
   else
   if (cnt ==23) PORTD = 0x00;
-  else PORTD = 0x7C;
+  else PORTD = 0x80;
   cnt++;
   if (cnt == 50) {cnt = 0; timing();}
 }
+//###################################
+//###################################
 
-static const char TRENRUSA[2] = {15,35};
-static const char tT [6] = {1,2,3,4,5,6};
-static char tTmode = 0;
+/////////////////////////////////////
+/////////////RUSATREN////////////////
+/////////////////////////////////////
+static const unsigned char TRENRUSA[2] = {15,35};
 static bool isRUSA = true;
 
-//SECUENCIA DE LA RUSA
 void TRENRUSAWrite() //a una frecc de 3500Hz
 {
-if (act) PORTD = sine[cnt];
-else PORTD = 0x7C;
-cnt++;
-if (cnt == SAM)
-{
-    cnt = 0;
+  DIADGALVWriter();
+  
+  if (SAMdone)
+  {
+    SAMdone = false;
     cntF++;
     if (cntF == TRENRUSA[isRUSA]) {cntF = 0;  t++; timing();}
     if ((isRUSA && t == 11) || (!isRUSA && t == tT[tTmode]) ) {act = !act; t = 0;}
+  }
 }
-}
+//###################################
+//###################################
 
 
+
+/////////////////////////////////////
+/////////TIMING_FUNCTIONS////////////
+/////////////////////////////////////
 void timing()
 {
-stot++;
-if (stot == 60)
-{mtot++; stot=0;}
+  stot++;
+  if (stot == 60)
+  {mtot++; stot=0;}
 }
-
 
 void setTimer0(char CTC, char CS)
 {
@@ -192,21 +228,12 @@ void setTimer2(char CTC, char CS)
   sei();
 }
 
-void f2000hz(){setTimer2(124,0x04);} //GALV
-void f2000000hz(){setTimer2(7,0x01);} // ULTRA
-void f200hz(){setTimer1(77,0x05);}
-void f100hz(){ t0ovr = 49; setTimer0(155,0x05);}
-
-void f1500hz(){setTimer0(165,0x03);}
-void f1750hz(){setTimer1(9141,0x01);}
-void f3000hz(){setTimer2(165,0x03);}
-void f10000hz(){setTimer2(24,0x04);}
-void f20000hz(){setTimer2(11,0x04);}
-
-void f50hz(){setTimer1(39999,0x02);}
-void f3500hz(){setTimer0(70,0x03);}
-void f5500hz(){setTimer2(89,0x03);}
+void f5500hzT2(){setTimer2(89,0x03);}
 void f20000hzT2(){setTimer2(11,0x04);}
+void f10000hzT2(){setTimer2(24,0x04);}
+//###################################
+//###################################
+
 
 //Notes:
 
